@@ -1,7 +1,2 @@
-.env
-backend/.env
-venv/
-__pycache__/
-*.pyc
-data/
-*.pkl
+*
+!.gitignore
