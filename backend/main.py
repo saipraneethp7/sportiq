@@ -9,6 +9,7 @@ from data_fetcher import (
     get_player_stats_summary,
     get_current_features,
     get_team_defense_ratings,
+    get_similar_players,
     ABBREV_TO_NAME
 )
 from predictor import predict_player_score
@@ -143,6 +144,22 @@ def get_team_defense():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/similar/{name}")
+def get_similar(name: str):
+    """
+    Find the 5 most statistically similar players to any NBA player.
+    Uses cosine similarity across 12 statistical dimensions.
+    Example: /similar/LeBron James
+    """
+    try:
+        result = get_similar_players(name)
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 # ─────────────────────────────────────────────
 # AI Scouting report endpoint
 # ─────────────────────────────────────────────

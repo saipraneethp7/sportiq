@@ -128,3 +128,79 @@ def get_player_stats_summary(player_id: int, season: str = '2024-25') -> dict:
         "losses": int(losses),
         "last_5_games": last5.to_dict('records')
     }
+def get_similar_players(player_name: str, top_n: int = 5) -> dict:
+    """
+    Find statistically similar players using cosine similarity.
+    Loads pre-computed similarity data on first call.
+    """
+    import unicodedata
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.metrics.pairwise import cosine_similarity
+    from nba_api.stats.endpoints import leaguedashplayerstats
+
+    time.sleep(0.6)
+
+    player_stats = leaguedashplayerstats.LeagueDashPlayerStats(
+        season='2024-25',
+        per_mode_detailed='PerGame'
+    )
+    df = player_stats.get_data_frames()[0]
+
+    similarity_features = [
+        'PTS', 'AST', 'REB', 'STL', 'BLK', 'TOV',
+        'FG_PCT', 'FG3M', 'FG3_PCT', 'FT_PCT', 'MIN', 'PLUS_MINUS'
+    ]
+
+    df_filtered = df[df['MIN'] >= 15].copy()
+    df_filtered = df_filtered.dropna(subset=similarity_features)
+
+    def normalize_name(name):
+        return ''.join(
+            c for c in unicodedata.normalize('NFD', name)
+            if unicodedata.category(c) != 'Mn'
+        ).lower()
+
+    df_filtered['PLAYER_NAME_NORMALIZED'] = df_filtered['PLAYER_NAME'].apply(normalize_name)
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(df_filtered[similarity_features].values)
+    similarity_matrix = cosine_similarity(X_scaled)
+
+    search_term = normalize_name(player_name)
+    mask = df_filtered['PLAYER_NAME_NORMALIZED'].str.contains(search_term, case=False, na=False)
+    matches = df_filtered[mask]
+
+    if len(matches) == 0:
+        return {"error": f"Player '{player_name}' not found"}
+
+    player_idx = matches.index[0]
+    filtered_positions = list(df_filtered.index)
+    pos = filtered_positions.index(player_idx)
+
+    similarity_scores = similarity_matrix[pos]
+    sorted_indices = similarity_scores.argsort()[::-1]
+
+    similar_players = []
+    for idx in sorted_indices[1:top_n+1]:
+        p = df_filtered.iloc[idx]
+        similar_players.append({
+            "name": p['PLAYER_NAME'],
+            "team": p['TEAM_ABBREVIATION'],
+            "similarity_score": round(float(similarity_scores[idx]), 3),
+            "pts": round(float(p['PTS']), 1),
+            "ast": round(float(p['AST']), 1),
+            "reb": round(float(p['REB']), 1),
+            "fg_pct": round(float(p['FG_PCT']) * 100, 1)
+        })
+
+    target = df_filtered.iloc[pos]
+    return {
+        "player": target['PLAYER_NAME'],
+        "stats": {
+            "pts": round(float(target['PTS']), 1),
+            "ast": round(float(target['AST']), 1),
+            "reb": round(float(target['REB']), 1),
+            "fg_pct": round(float(target['FG_PCT']) * 100, 1)
+        },
+        "similar_players": similar_players
+    }
