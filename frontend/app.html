@@ -1216,9 +1216,46 @@ document.getElementById("p-record").textContent = s.wins + "W / " + s.losses + "
   }
 
   async function loadDefenseRankings() {
-    if (!currentPlayer) { showToast("Search a player first"); return; }
-    showToast("Defense rankings: use /teams/defense endpoint");
+  document.getElementById("empty-state").style.display = "none";
+  document.getElementById("dashboard").classList.add("show");
+  document.getElementById("stat-row").innerHTML = "";
+
+  var views = ["stats", "predict", "dna", "scout", "compare", "timeline"];
+  views.forEach(function(v) {
+    var el = document.getElementById("view-" + v);
+    if (el) el.style.display = "none";
+  });
+
+  var existing = document.getElementById("view-defense");
+  if (existing) existing.remove();
+
+  var div = document.createElement("div");
+  div.id = "view-defense";
+  div.innerHTML = "<div class='card'><div class='card-head'><div class='card-title'><span class='card-dot' style='background:var(--yellow)'></span> NBA Team Defensive Rankings 2024-25</div><div style='font-size:0.75rem;color:var(--muted)'>Lower rating = better defense</div></div><div id='defense-list'><div style='text-align:center;padding:2rem;color:var(--muted)'><div class='loader' style='margin:0 auto 1rem'></div>Loading rankings...</div></div></div>";
+  document.querySelector(".content").appendChild(div);
+
+  try {
+    var res = await fetch(API + "/teams/defense");
+    var data = await res.json();
+
+    document.getElementById("defense-list").innerHTML = data.rankings.map(function(t) {
+      var pct = ((120 - t.def_rating) / 20 * 100).toFixed(0);
+      var color = t.rank <= 5 ? "var(--green)" : t.rank <= 15 ? "var(--yellow)" : "var(--orange)";
+      return "<div style='display:flex;align-items:center;gap:1rem;padding:0.8rem 0;border-bottom:1px solid var(--border)'>" +
+        "<div style='font-family:Bebas Neue,sans-serif;font-size:1.2rem;color:var(--muted);width:32px'>" + t.rank + "</div>" +
+        "<div style='flex:1'>" +
+          "<div style='font-size:0.88rem;font-weight:600;margin-bottom:0.3rem'>" + t.team + "</div>" +
+          "<div style='height:4px;background:var(--surface2);border-radius:2px;overflow:hidden'><div style='height:100%;width:" + pct + "%;background:" + color + ";border-radius:2px'></div></div>" +
+        "</div>" +
+        "<div style='font-family:Bebas Neue,sans-serif;font-size:1.3rem;color:" + color + "'>" + t.def_rating + "</div>" +
+      "</div>";
+    }).join("");
+
+    showToast("Defense rankings loaded!");
+  } catch(e) {
+    showToast("Failed to load rankings.");
   }
+}
 
   document.getElementById("search-input").addEventListener("keydown", function(e) {
     if (e.key === "Enter") searchPlayer();
