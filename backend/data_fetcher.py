@@ -186,6 +186,7 @@ def get_similar_players(player_name: str, top_n: int = 5) -> dict:
         similar_players.append({
             "name": p['PLAYER_NAME'],
             "team": p['TEAM_ABBREVIATION'],
+            "player_id": int(p['PLAYER_ID']),
             "similarity_score": round(float(similarity_scores[idx]), 3),
             "pts": round(float(p['PTS']), 1),
             "ast": round(float(p['AST']), 1),

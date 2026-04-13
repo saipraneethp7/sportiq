@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SportIQ — NBA Analytics Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --black: #050810;
+      --surface: #0a0f1e;
+      --surface2: #111827;
+      --surface3: #1a2235;
+      --border: rgba(255,255,255,0.06);
+      --border-hover: rgba(255,255,255,0.12);
+      --text: #f0f4ff;
+      --muted: #6b7a99;
+      --green: #00ff87;
+      --orange: #ff6b47;
+      --blue: #4da6ff;
+      --purple: #a78bfa;
+      --yellow: #fbbf24;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--black);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .mesh {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 0% 0%, rgba(0,255,135,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 100% 100%, rgba(255,107,71,0.04) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      width: 240px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+    }
+
+    .sidebar-logo {
+      padding: 1.5rem 1.8rem;
+      border-bottom: 1px solid var(--border);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.6rem;
+      letter-spacing: 0.05em;
+    }
+
+    .sidebar-logo span { color: var(--green); }
+
+    .sidebar-nav {
+      padding: 1rem 0;
+      flex: 1;
+    }
+
+    .nav-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 0.5rem 1.8rem;
+      margin-top: 0.5rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      padding: 0.7rem 1.8rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .nav-item.active { color: var(--green); border-left-color: var(--green); background: rgba(0,255,135,0.05); }
+    .nav-icon { font-size: 1rem; width: 20px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 1.2rem 1.8rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .back-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .back-link:hover { color: var(--text); }
+
+    /* Main */
+    .main {
+      margin-left: 240px;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Top bar */
+    .topbar {
+      height: 64px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      background: rgba(5,8,16,0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 1rem;
+  width: 420px;
+  transition: border-color 0.2s;
+}
+
+.search-wrap:focus-within {
+  border-color: rgba(0,255,135,0.4);
+  box-shadow: 0 0 0 3px rgba(0,255,135,0.06);
+}
+
+    .search-wrap:focus-within { border-color: rgba(0,255,135,0.3); }
+    .search-icon { color: var(--muted); font-size: 0.9rem; }
+
+    .search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.65rem 0;
+  font-size: 0.88rem;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text);
+  outline: none;
+  caret-color: var(--green);
+}
+
+.search-input:-webkit-autofill,
+.search-input:-webkit-autofill:hover,
+.search-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--surface2) inset;
+  -webkit-text-fill-color: var(--text);
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+    .search-input::placeholder { color: var(--muted); }
+
+    .search-btn {
+      padding: 0.4rem 1rem;
+      background: var(--green);
+      color: var(--black);
+      border: none;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: opacity 0.2s;
+    }
+
+    .search-btn:hover { opacity: 0.85; }
+    .search-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .quick-chip {
+      padding: 0.3rem 0.8rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .quick-chip:hover { border-color: rgba(0,255,135,0.3); color: var(--green); }
+
+    /* Content */
+    .content { padding: 2rem; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 70vh;
+      text-align: center;
+      animation: fadeUp 0.5s ease both;
+    }
+
+    .empty-big {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 8rem;
+      color: rgba(0,255,135,0.06);
+      letter-spacing: 0.1em;
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+
+    .empty-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-sub { font-size: 0.88rem; color: var(--muted); margin-bottom: 2rem; }
+
+    .empty-chips {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .empty-chip {
+      padding: 0.45rem 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .empty-chip:hover { border-color: rgba(0,255,135,0.3); color: var(--green); }
+
+    /* Loading */
+    .loading-state {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 60vh;
+      gap: 1rem;
+    }
+
+    .loading-state.show { display: flex; }
+
+    .loader {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--surface2);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading-msg { color: var(--muted); font-size: 0.9rem; }
+
+    /* Dashboard */
+    .dashboard { display: none; }
+    .dashboard.show { display: block; animation: fadeUp 0.4s ease both; }
+
+    /* Player hero */
+    .player-hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.8rem 2rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .player-hero::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--green), var(--orange), var(--blue));
+    }
+
+    .player-name-big {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 3rem;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .player-name-big span { color: var(--green); }
+
+    .player-badges {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    .badge {
+      padding: 0.22rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .badge-green { background: rgba(0,255,135,0.1); color: var(--green); border: 1px solid rgba(0,255,135,0.2); }
+    .badge-blue { background: rgba(77,166,255,0.1); color: var(--blue); border: 1px solid rgba(77,166,255,0.2); }
+    .badge-muted { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+    .tab-row {
+      display: flex;
+      gap: 0.4rem;
+    }
+
+    .tab-btn {
+      padding: 0.5rem 1.2rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover { color: var(--text); border-color: var(--border-hover); }
+    .tab-btn.active { background: rgba(0,255,135,0.1); border-color: rgba(0,255,135,0.3); color: var(--green); }
+
+    /* Stat cards */
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.3rem 1rem;
+      text-align: center;
+      transition: all 0.25s;
+      cursor: default;
+    }
+
+    .stat-card:hover { border-color: var(--border-hover); transform: translateY(-3px); }
+
+    .stat-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.6rem;
+      letter-spacing: 0.02em;
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+
+    .stat-lbl {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
+    /* Two col */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.2rem;
+    }
+
+    .card-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    /* Prediction */
+    .pred-field { margin-bottom: 0.9rem; }
+
+    .field-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 0.35rem;
+    }
+
+    .field-select {
+      width: 100%;
+      padding: 0.6rem 0.9rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field-select:focus { border-color: rgba(0,255,135,0.3); }
+    .field-select option { background: var(--surface2); }
+
+    .pred-btn {
+      width: 100%;
+      padding: 0.8rem;
+      background: linear-gradient(135deg, #00ff87, #00cc6a);
+      color: var(--black);
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+      margin-top: 0.5rem;
+    }
+
+    .pred-btn:hover { opacity: 0.85; transform: translateY(-1px); }
+    .pred-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .pred-result {
+      display: none;
+      margin-top: 1rem;
+      background: var(--surface2);
+      border: 1px solid rgba(0,255,135,0.15);
+      border-radius: 10px;
+      padding: 1.2rem;
+      text-align: center;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .pred-result.show { display: block; }
+
+    .pred-big {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 4rem;
+      color: var(--green);
+      letter-spacing: 0.02em;
+      line-height: 1;
+    }
+
+    .pred-unit { font-size: 1.2rem; color: var(--muted); }
+    .pred-range { font-size: 0.78rem; color: var(--muted); margin-top: 0.3rem; font-family: monospace; }
+    .pred-note { font-size: 0.78rem; color: var(--muted); margin-top: 0.7rem; line-height: 1.6; }
+
+    /* Games table */
+    .games-tbl { width: 100%; border-collapse: collapse; }
+
+    .games-tbl th {
+      font-size: 0.68rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding: 0.5rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      font-weight: 700;
+    }
+
+    .games-tbl td {
+      padding: 0.75rem 0.8rem;
+      font-size: 0.83rem;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+    }
+
+    .games-tbl tr:last-child td { border-bottom: none; }
+    .games-tbl tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .pts-cell { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--orange); }
+    .date-cell { color: var(--muted); font-size: 0.75rem; font-family: monospace; }
+
+    .wl { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 700; }
+    .wl-w { background: rgba(0,255,135,0.1); color: var(--green); }
+    .wl-l { background: rgba(255,107,71,0.1); color: var(--orange); }
+
+    /* DNA */
+    .dna-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+    .dna-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.9rem 1rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      transition: all 0.2s;
+    }
+
+    .dna-item:hover { border-color: rgba(0,255,135,0.2); transform: translateX(4px); }
+
+    .dna-rank {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem;
+      color: rgba(0,255,135,0.3);
+      width: 28px;
+      flex-shrink: 0;
+    }
+
+    .dna-info { flex: 1; }
+    .dna-name { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.2rem; }
+    .dna-stats { font-size: 0.72rem; color: var(--muted); font-family: monospace; }
+
+    .dna-pct {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      color: var(--green);
+      background: rgba(0,255,135,0.08);
+      border: 1px solid rgba(0,255,135,0.15);
+      padding: 0.3rem 0.7rem;
+      border-radius: 6px;
+    }
+
+    .dna-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      gap: 0.8rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    /* Scout */
+    .scout-btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: transparent;
+      border: 1px solid rgba(167,139,250,0.3);
+      border-radius: 8px;
+      color: var(--purple);
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.2s;
+      margin-bottom: 1rem;
+    }
+
+    .scout-btn:hover { background: rgba(167,139,250,0.06); }
+    .scout-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .scout-text {
+      display: none;
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.9;
+      white-space: pre-line;
+    }
+
+    .scout-text.show { display: block; animation: fadeUp 0.3s ease both; }
+
+    /* Three col */
+    .three-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--surface2);
+      border: 1px solid var(--border-hover);
+      border-radius: 10px;
+      padding: 0.85rem 1.3rem;
+      font-size: 0.84rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 1000;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="mesh"></div>
+
+<div class="sidebar">
+  <div class="sidebar-logo">Sport<span>IQ</span></div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Analytics</div>
+    <div class="nav-item active" onclick="setNav(this)">
+      <span class="nav-icon">📊</span> Player Stats
+    </div>
+    <div class="nav-item" onclick="setNav(this); switchView('predict')">
+      <span class="nav-icon">⚡</span> Game Predictor
+    </div>
+    <div class="nav-item" onclick="setNav(this); switchView('dna')">
+      <span class="nav-icon">🧬</span> Player DNA
+    </div>
+    <div class="nav-item" onclick="setNav(this); switchView('scout')">
+      <span class="nav-icon">🔍</span> Scout Report
+    </div>
+    <div class="nav-item" onclick="setNav(this); switchView('compare')">
+    <span class="nav-icon">⚔️</span> Head to Head
+    </div>
+    <div class="nav-item" onclick="setNav(this); switchView('timeline')">
+  <span class="nav-icon">📈</span> Season Timeline
+    </div>
+    <div class="nav-section-label">League</div>
+    <div class="nav-item" onclick="setNav(this); loadDefenseRankings()">
+      <span class="nav-icon">🏆</span> Team Defense
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <a href="index.html" class="back-link">← Back to home</a>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="search-input" placeholder="Search any NBA player..." />
+      <button class="search-btn" id="search-btn" onclick="searchPlayer()">Analyze</button>
+    </div>
+    <div class="topbar-right">
+      <div class="quick-chip" onclick="quickSearch('LeBron James')">LeBron</div>
+      <div class="quick-chip" onclick="quickSearch('Stephen Curry')">Curry</div>
+      <div class="quick-chip" onclick="quickSearch('Nikola Jokic')">Jokic</div>
+      <div class="quick-chip" onclick="quickSearch('Luka Doncic')">Luka</div>
+    </div>
+  </div>
+
+  <div class="content">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-big">NBA</div>
+      <div class="empty-title">Search any NBA player to begin</div>
+      <div class="empty-sub">Real stats · ML predictions · Player DNA · AI scouting reports</div>
+      <div class="empty-chips">
+        <div class="empty-chip" onclick="quickSearch('LeBron James')">LeBron James</div>
+        <div class="empty-chip" onclick="quickSearch('Stephen Curry')">Stephen Curry</div>
+        <div class="empty-chip" onclick="quickSearch('Nikola Jokic')">Nikola Jokic</div>
+        <div class="empty-chip" onclick="quickSearch('Luka Doncic')">Luka Doncic</div>
+        <div class="empty-chip" onclick="quickSearch('Anthony Edwards')">Anthony Edwards</div>
+        <div class="empty-chip" onclick="quickSearch('Jayson Tatum')">Jayson Tatum</div>
+      </div>
+    </div>
+
+    <div class="loading-state" id="loading-state">
+      <div class="loader"></div>
+      <div class="loading-msg" id="loading-msg">Fetching data...</div>
+    </div>
+
+    <div class="dashboard" id="dashboard">
+
+      <div class="player-hero">
+        <div>
+          <div class="player-name-big" id="p-name">Player <span>Name</span></div>
+          <div class="player-badges">
+            <span class="badge badge-green">Active</span>
+            <span class="badge badge-blue">2024-25</span>
+            <span class="badge badge-muted" id="p-record"></span>
+          </div>
+        </div>
+        <div class="tab-row">
+          <button class="tab-btn active" onclick="switchView('stats', this)">Stats</button>
+          <button class="tab-btn" onclick="switchView('predict', this)">Predict</button>
+          <button class="tab-btn" onclick="switchView('dna', this)">Player DNA</button>
+          <button class="tab-btn" onclick="switchView('scout', this)">Scout</button>
+        </div>
+      </div>
+
+      <div class="stat-row" id="stat-row"></div>
+
+      <!-- Stats view -->
+      <div id="view-stats">
+        <div class="two-col">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title"><span class="card-dot"></span> Last 5 games</div>
+            </div>
+            <canvas id="chart-recent" height="180"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title"><span class="card-dot" style="background:var(--orange)"></span> Scoring range</div>
+            </div>
+            <canvas id="chart-dist" height="180"></canvas>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:1.5rem">
+          <div class="card-head">
+            <div class="card-title"><span class="card-dot" style="background:var(--blue)"></span> Recent game log</div>
+          </div>
+          <table class="games-tbl">
+            <thead>
+              <tr>
+                <th>Date</th><th>Matchup</th><th>PTS</th><th>AST</th><th>REB</th><th>FG%</th><th>Result</th>
+              </tr>
+            </thead>
+            <tbody id="games-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Predict view -->
+      <div id="view-predict" style="display:none">
+        <div class="two-col">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title"><span class="card-dot" style="background:var(--green)"></span> Configure game conditions</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem">
+              <div class="pred-field">
+                <div class="field-label">Opponent</div>
+                <select class="field-select" id="pred-opp">
+                  <option value="OKC">Oklahoma City Thunder</option>
+                  <option value="BOS">Boston Celtics</option>
+                  <option value="MIA">Miami Heat</option>
+                  <option value="LAC">LA Clippers</option>
+                  <option value="DEN">Denver Nuggets</option>
+                  <option value="NYK">New York Knicks</option>
+                  <option value="GSW">Golden State Warriors</option>
+                  <option value="MIL">Milwaukee Bucks</option>
+                  <option value="MIN">Minnesota Timberwolves</option>
+                  <option value="CLE">Cleveland Cavaliers</option>
+                  <option value="PHX">Phoenix Suns</option>
+                  <option value="UTA">Utah Jazz</option>
+                  <option value="NOP">New Orleans Pelicans</option>
+                  <option value="PHI">Philadelphia 76ers</option>
+                  <option value="SAS">San Antonio Spurs</option>
+                  <option value="WAS">Washington Wizards</option>
+                  <option value="SAC">Sacramento Kings</option>
+                  <option value="POR">Portland Trail Blazers</option>
+                </select>
+              </div>
+              <div class="pred-field">
+                <div class="field-label">Location</div>
+                <select class="field-select" id="pred-home">
+                  <option value="1">Home game</option>
+                  <option value="0">Away game</option>
+                </select>
+              </div>
+              <div class="pred-field">
+                <div class="field-label">Days of rest</div>
+                <select class="field-select" id="pred-rest">
+                  <option value="1">1 day rest</option>
+                  <option value="2">2 days rest</option>
+                  <option value="3">3 days rest</option>
+                  <option value="4">4+ days rest</option>
+                </select>
+              </div>
+            </div>
+            <button class="pred-btn" id="pred-btn" onclick="runPrediction()">⚡ Generate Prediction</button>
+            <div class="pred-result" id="pred-result">
+              <div class="pred-big" id="pred-pts">--<span class="pred-unit"> PTS</span></div>
+              <div class="pred-range" id="pred-range">Confidence range: -- to --</div>
+              <div class="pred-note" id="pred-note"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title"><span class="card-dot" style="background:var(--yellow)"></span> How predictions work</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:1rem">
+              <div style="padding:0.9rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+                <div style="font-size:0.75rem;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">Model type</div>
+                <div style="font-size:0.85rem">Linear Regression trained on 52 games</div>
+              </div>
+              <div style="padding:0.9rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+                <div style="font-size:0.75rem;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">Accuracy</div>
+                <div style="font-size:0.85rem">Mean absolute error: ~4.4 points</div>
+              </div>
+              <div style="padding:0.9rem;background:var(--surface2);border-radius:8px;border:1px solid var(--border)">
+                <div style="font-size:0.75rem;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem">Features used</div>
+                <div style="font-size:0.82rem;color:var(--muted);line-height:1.7">Home/Away · Days rest · Opponent defense · Recent form (last 5 games) · Team momentum</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DNA view -->
+      <div id="view-dna" style="display:none">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="card-dot" style="background:var(--blue)"></span> Player DNA — statistically similar players</div>
+            <div style="font-size:0.75rem;color:var(--muted)">Cosine similarity across 12 statistical dimensions</div>
+          </div>
+          <div class="dna-list" id="dna-list">
+            <div class="dna-loading">
+              <div class="loader"></div>
+              Loading Player DNA...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scout view -->
+      <div id="view-scout" style="display:none">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="card-dot" style="background:var(--purple)"></span> AI scouting report</div>
+            <div style="font-size:0.72rem;color:var(--muted)">Powered by LLaMA 3.3 70B</div>
+          </div>
+          <button class="scout-btn" id="scout-btn" onclick="generateScout()">🔍 Generate Scouting Report</button>
+          <div class="scout-text" id="scout-text"></div>
+        </div>
+      </div>
+
+    <!-- Compare view -->
+      <div id="view-compare" style="display:none">
+        <div class="card" style="margin-bottom:1.5rem">
+          <div class="card-head">
+            <div class="card-title"><span class="card-dot" style="background:var(--orange)"></span> Head to Head Comparison</div>
+          </div>
+          <div style="display:flex;gap:1rem;margin-bottom:1.2rem;align-items:flex-end">
+            <div style="flex:1">
+              <div class="field-label">Player 1</div>
+              <input class="field-select" id="compare-p1" placeholder="e.g. LeBron James" />
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--muted);padding-bottom:0.3rem">VS</div>
+            <div style="flex:1">
+              <div class="field-label">Player 2</div>
+              <input class="field-select" id="compare-p2" placeholder="e.g. Kevin Durant" />
+            </div>
+            <button class="pred-btn" style="width:140px;padding:0.6rem 1rem" onclick="runComparison()">Compare →</button>
+          </div>
+          <div id="compare-result" style="display:none">
+            <div style="display:grid;grid-template-columns:1fr 200px 1fr;gap:1rem;align-items:center">
+              <div id="compare-left" style="text-align:right"></div>
+              <div><canvas id="radar-chart" style="max-width:200px"></canvas></div>
+              <div id="compare-right"></div>
+            </div>
+            <div id="compare-bars" style="margin-top:1.5rem"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline view -->
+      <div id="view-timeline" style="display:none">
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title"><span class="card-dot" style="background:var(--blue)"></span> Season Scoring Timeline</div>
+            <div style="font-size:0.75rem;color:var(--muted)" id="timeline-avg"></div>
+          </div>
+          <div id="timeline-loading" style="display:none;text-align:center;padding:2rem;color:var(--muted)">
+            <div class="loader" style="margin:0 auto 1rem"></div>
+            Building timeline...
+          </div>
+          <canvas id="timeline-chart" height="120"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <span class="toast-dot"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+  const API = "http://127.0.0.1:8000";
+  let currentPlayer = null;
+  let chartRecent = null;
+  let chartDist = null;
+  let dnaLoaded = false;
+
+  function showToast(msg) {
+    var t = document.getElementById("toast");
+    document.getElementById("toast-msg").textContent = msg;
+    t.classList.add("show");
+    setTimeout(function() { t.classList.remove("show"); }, 2500);
+  }
+
+  function setNav(el) {
+    document.querySelectorAll(".nav-item").forEach(function(n) { n.classList.remove("active"); });
+    el.classList.add("active");
+  }
+
+  function quickSearch(name) {
+    document.getElementById("search-input").value = name;
+    searchPlayer();
+  }
+
+  function showLoading(msg) {
+    document.getElementById("empty-state").style.display = "none";
+    document.getElementById("dashboard").classList.remove("show");
+    var ls = document.getElementById("loading-state");
+    ls.classList.add("show");
+    document.getElementById("loading-msg").textContent = msg || "Fetching data...";
+  }
+
+  function hideLoading() {
+    document.getElementById("loading-state").classList.remove("show");
+  }
+
+  async function searchPlayer() {
+    var name = document.getElementById("search-input").value.trim();
+    if (!name) { showToast("Enter a player name"); return; }
+
+    var btn = document.getElementById("search-btn");
+    btn.disabled = true;
+    btn.textContent = "...";
+    showLoading("Analyzing " + name + "...");
+    dnaLoaded = false;
+
+    try {
+      var res = await fetch(API + "/player/" + encodeURIComponent(name));
+      if (!res.ok) throw new Error("Not found");
+      var data = await res.json();
+      currentPlayer = data;
+      hideLoading();
+      renderDashboard(data);
+      switchView("stats");
+      showToast(data.name + " loaded!");
+    } catch(e) {
+      hideLoading();
+      document.getElementById("empty-state").style.display = "flex";
+      showToast("Player not found. Try again.");
+    }
+
+    btn.disabled = false;
+    btn.textContent = "Analyze";
+  }
+
+  function renderDashboard(data) {
+    var s = data.stats;
+    document.getElementById("dashboard").classList.add("show");
+
+    var parts = data.name.split(" ");
+var first = parts[0];
+var last = parts.slice(1).join(" ");
+document.getElementById("p-name").innerHTML = first + " <span>" + last + "</span>";
+document.getElementById("p-record").textContent = s.wins + "W / " + s.losses + "L · " + s.games_played + " GP";
+
+    var imgUrl = "https://cdn.nba.com/headshots/nba/latest/1040x760/" + data.player_id + ".png";
+    var existingImg = document.getElementById("player-headshot");
+    if (existingImg) existingImg.remove();
+    var img = document.createElement("img");
+    img.id = "player-headshot";
+    img.src = imgUrl;
+    img.style.cssText = "height:120px;object-fit:contain;object-position:top;filter:drop-shadow(0 4px 20px rgba(0,255,135,0.15));";
+    img.onerror = function() { this.style.display = "none"; };
+    document.querySelector(".player-hero").appendChild(img);
+    var cards = [
+      { v: s.ppg, l: "PPG", c: "var(--orange)" },
+      { v: s.apg, l: "APG", c: "var(--blue)" },
+      { v: s.rpg, l: "RPG", c: "var(--green)" },
+      { v: s.fg_pct + "%", l: "FG%", c: "var(--yellow)" },
+      { v: s.fg3_pct + "%", l: "3P%", c: "var(--purple)" },
+      { v: s.games_played, l: "GP", c: "var(--muted)" }
+    ];
+
+    document.getElementById("stat-row").innerHTML = cards.map(function(c) {
+      return "<div class='stat-card'><div class='stat-num' style='color:" + c.c + "'>" + c.v + "</div><div class='stat-lbl'>" + c.l + "</div></div>";
+    }).join("");
+
+    var games = s.last_5_games;
+    var labels = games.map(function(g) { return g.GAME_DATE; });
+    var pts = games.map(function(g) { return g.PTS; });
+    var ast = games.map(function(g) { return g.AST; });
+    var reb = games.map(function(g) { return g.REB; });
+
+    if (chartRecent) chartRecent.destroy();
+    chartRecent = new Chart(document.getElementById("chart-recent").getContext("2d"), {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [
+          { label: "PTS", data: pts, borderColor: "#ff6b47", backgroundColor: "rgba(255,107,71,0.08)", tension: 0.4, fill: true, pointBackgroundColor: "#ff6b47", pointRadius: 5 },
+          { label: "AST", data: ast, borderColor: "#4da6ff", backgroundColor: "transparent", tension: 0.4, pointBackgroundColor: "#4da6ff", pointRadius: 4 },
+          { label: "REB", data: reb, borderColor: "#00ff87", backgroundColor: "transparent", tension: 0.4, pointBackgroundColor: "#00ff87", pointRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: "#6b7a99", font: { family: "DM Sans", size: 11 } } } },
+        scales: {
+          x: { ticks: { color: "#6b7a99", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.03)" } },
+          y: { ticks: { color: "#6b7a99", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.03)" } }
+        }
+      }
+    });
+
+    var buckets = { "0-9": 0, "10-19": 0, "20-29": 0, "30-39": 0, "40+": 0 };
+    pts.forEach(function(p) {
+      if (p < 10) buckets["0-9"]++;
+      else if (p < 20) buckets["10-19"]++;
+      else if (p < 30) buckets["20-29"]++;
+      else if (p < 40) buckets["30-39"]++;
+      else buckets["40+"]++;
+    });
+
+    if (chartDist) chartDist.destroy();
+    chartDist = new Chart(document.getElementById("chart-dist").getContext("2d"), {
+      type: "bar",
+      data: {
+        labels: Object.keys(buckets),
+        datasets: [{ label: "Games", data: Object.values(buckets), backgroundColor: ["rgba(255,107,71,0.5)","rgba(255,107,71,0.6)","rgba(255,107,71,0.8)","rgba(255,107,71,0.6)","rgba(255,107,71,0.4)"], borderRadius: 6 }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "#6b7a99" }, grid: { display: false } },
+          y: { ticks: { color: "#6b7a99" }, grid: { color: "rgba(255,255,255,0.03)" } }
+        }
+      }
+    });
+
+    var tbody = document.getElementById("games-body");
+    tbody.innerHTML = "";
+    games.forEach(function(g) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        "<td class='date-cell'>" + g.GAME_DATE + "</td>" +
+        "<td>" + g.MATCHUP + "</td>" +
+        "<td class='pts-cell'>" + g.PTS + "</td>" +
+        "<td>" + g.AST + "</td>" +
+        "<td>" + g.REB + "</td>" +
+        "<td style='color:var(--muted);font-family:monospace;font-size:0.78rem'>" + (g.FG_PCT ? (g.FG_PCT * 100).toFixed(1) + "%" : "-") + "</td>" +
+        "<td><span class='wl " + (g.WL === "W" ? "wl-w" : "wl-l") + "'>" + g.WL + "</span></td>";
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById("pred-result").classList.remove("show");
+    document.getElementById("scout-text").classList.remove("show");
+    document.getElementById("scout-btn").textContent = "🔍 Generate Scouting Report";
+    document.getElementById("scout-btn").disabled = false;
+  }
+
+  function switchView(view, btnEl) {
+    var views = ["stats", "predict", "dna", "scout", "compare", "timeline"];
+    views.forEach(function(v) {
+      var el = document.getElementById("view-" + v);
+      if (el) el.style.display = "none";
+    });
+
+    var el = document.getElementById("view-" + view);
+    if (el) el.style.display = "block";
+
+    if (btnEl) {
+      document.querySelectorAll(".tab-btn").forEach(function(b) { b.classList.remove("active"); });
+      btnEl.classList.add("active");
+    }
+
+    if (view === "dna" && currentPlayer && !dnaLoaded) {
+        loadDNA();
+    }
+    if (view === "timeline" && currentPlayer) {
+        loadTimeline();
+    }
+  }
+
+  async function loadDNA() {
+    document.getElementById("dna-list").innerHTML = "<div class='dna-loading'><div class='loader'></div>Building Player DNA profile...</div>";
+
+    try {
+      var res = await fetch(API + "/similar/" + encodeURIComponent(currentPlayer.name));
+      var data = await res.json();
+      dnaLoaded = true;
+
+      document.getElementById("dna-list").innerHTML = data.similar_players.map(function(p, i) {
+    var imgUrl = "https://cdn.nba.com/headshots/nba/latest/1040x760/" + p.player_id + ".png";
+    return "<div class='dna-item'>" +
+      "<div class='dna-rank'>" + (i+1) + "</div>" +
+      "<img src='" + imgUrl + "' style='width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:top;background:var(--surface3);border:2px solid var(--border)' onerror=\"this.style.display='none'\" />" +
+      "<div class='dna-info'>" +
+        "<div class='dna-name'>" + p.name + " <span style='color:var(--muted);font-size:0.75rem;font-weight:400'>(" + p.team + ")</span></div>" +
+        "<div class='dna-stats'>" + p.pts + " PPG · " + p.ast + " APG · " + p.reb + " RPG · " + p.fg_pct + "% FG</div>" +
+      "</div>" +
+      "<div class='dna-pct'>" + (p.similarity_score * 100).toFixed(1) + "%</div>" +
+    "</div>";
+    }).join("");
+
+      showToast("Player DNA loaded!");
+    } catch(e) {
+      document.getElementById("dna-list").innerHTML = "<div style='padding:1rem;color:var(--muted);font-size:0.85rem'>Failed to load. Try again.</div>";
+    }
+  }
+
+  async function runPrediction() {
+    if (!currentPlayer) return;
+    var btn = document.getElementById("pred-btn");
+    btn.disabled = true;
+    btn.textContent = "Calculating...";
+
+    try {
+      var opp = document.getElementById("pred-opp").value;
+      var home = parseInt(document.getElementById("pred-home").value);
+      var rest = parseInt(document.getElementById("pred-rest").value);
+
+      var res = await fetch(API + "/predict/" + encodeURIComponent(currentPlayer.name), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opponent: opp, is_home: home, days_rest: rest })
+      });
+
+      var data = await res.json();
+      var pred = data.prediction;
+
+      document.getElementById("pred-pts").innerHTML = pred.predicted_points + "<span class='pred-unit'> PTS</span>";
+      document.getElementById("pred-range").textContent = "Confidence range: " + pred.range_low + " — " + pred.range_high + " pts";
+      document.getElementById("pred-note").textContent =
+        (home ? "Home" : "Away") + " vs " + data.opponent +
+        " · " + rest + " day rest · Current form: " + data.current_form + " PPG · Team momentum: " + (data.team_momentum * 100).toFixed(0) + "%";
+
+      document.getElementById("pred-result").classList.add("show");
+      showToast("Prediction ready!");
+    } catch(e) {
+      showToast("Prediction failed. Try again.");
+    }
+
+    btn.disabled = false;
+    btn.textContent = "⚡ Generate Prediction";
+  }
+
+  async function generateScout() {
+    if (!currentPlayer) return;
+    var btn = document.getElementById("scout-btn");
+    btn.disabled = true;
+    btn.textContent = "Generating report...";
+
+    try {
+      var res = await fetch(API + "/scout/" + encodeURIComponent(currentPlayer.name));
+      var data = await res.json();
+      var el = document.getElementById("scout-text");
+      el.textContent = data.scouting_report;
+      el.classList.add("show");
+      showToast("Scouting report ready!");
+    } catch(e) {
+      showToast("Failed to generate report.");
+    }
+
+    btn.disabled = false;
+    btn.textContent = "🔍 Regenerate Report";
+  }
+
+  async function loadDefenseRankings() {
+    if (!currentPlayer) { showToast("Search a player first"); return; }
+    showToast("Defense rankings: use /teams/defense endpoint");
+  }
+
+  document.getElementById("search-input").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") searchPlayer();
+  });
+
+  var radarChart = null;
+  var timelineChart = null;
+
+  async function runComparison() {
+    var p1 = document.getElementById("compare-p1").value.trim();
+    var p2 = document.getElementById("compare-p2").value.trim();
+    if (!p1 || !p2) { showToast("Enter both player names"); return; }
+    showToast("Comparing players...");
+    try {
+      var res = await fetch(API + "/compare?player1=" + encodeURIComponent(p1) + "&player2=" + encodeURIComponent(p2));
+      if (!res.ok) throw new Error("Failed");
+      var data = await res.json();
+      document.getElementById("compare-result").style.display = "block";
+      var s1 = data.player1.stats;
+      var s2 = data.player2.stats;
+      var img1 = "https://cdn.nba.com/headshots/nba/latest/1040x760/" + data.player1.player_id + ".png";
+      var img2 = "https://cdn.nba.com/headshots/nba/latest/1040x760/" + data.player2.player_id + ".png";
+      document.getElementById("compare-left").innerHTML =
+        "<img src='" + img1 + "' style='width:80px;height:80px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid var(--orange);margin-bottom:0.5rem' onerror=\"this.style.display='none'\" />" +
+        "<div style='font-family:Bebas Neue,sans-serif;font-size:1.4rem;color:var(--orange)'>" + data.player1.name + "</div>" +
+        "<div style='font-size:0.8rem;color:var(--muted)'>" + s1.ppg + " PPG · " + s1.apg + " APG · " + s1.rpg + " RPG</div>";
+      document.getElementById("compare-right").innerHTML =
+        "<img src='" + img2 + "' style='width:80px;height:80px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid var(--blue);margin-bottom:0.5rem' onerror=\"this.style.display='none'\" />" +
+        "<div style='font-family:Bebas Neue,sans-serif;font-size:1.4rem;color:var(--blue)'>" + data.player2.name + "</div>" +
+        "<div style='font-size:0.8rem;color:var(--muted)'>" + s2.ppg + " PPG · " + s2.apg + " APG · " + s2.rpg + " RPG</div>";
+      if (radarChart) radarChart.destroy();
+      radarChart = new Chart(document.getElementById("radar-chart").getContext("2d"), {
+        type: "radar",
+        data: {
+          labels: ["PPG", "APG", "RPG", "FG%", "3P%"],
+          datasets: [
+            { label: data.player1.name.split(" ")[0], data: [s1.ppg, s1.apg * 3, s1.rpg * 2, s1.fg_pct, s1.fg3_pct], borderColor: "#ff6b47", backgroundColor: "rgba(255,107,71,0.1)", pointBackgroundColor: "#ff6b47" },
+            { label: data.player2.name.split(" ")[0], data: [s2.ppg, s2.apg * 3, s2.rpg * 2, s2.fg_pct, s2.fg3_pct], borderColor: "#4da6ff", backgroundColor: "rgba(77,166,255,0.1)", pointBackgroundColor: "#4da6ff" }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: { r: { ticks: { display: false }, grid: { color: "rgba(255,255,255,0.05)" }, pointLabels: { color: "#6b7a99", font: { size: 10, family: "DM Sans" } } } },
+          plugins: { legend: { labels: { color: "#6b7a99", font: { family: "DM Sans", size: 11 } } } }
+        }
+      });
+      var categories = [
+        { label: "Points per game", v1: s1.ppg, v2: s2.ppg },
+        { label: "Assists per game", v1: s1.apg, v2: s2.apg },
+        { label: "Rebounds per game", v1: s1.rpg, v2: s2.rpg },
+        { label: "Field goal %", v1: s1.fg_pct, v2: s2.fg_pct },
+        { label: "3-point %", v1: s1.fg3_pct, v2: s2.fg3_pct }
+      ];
+      document.getElementById("compare-bars").innerHTML = categories.map(function(cat) {
+        var max = Math.max(cat.v1, cat.v2);
+        var pct1 = max > 0 ? (cat.v1 / max * 100) : 50;
+        var pct2 = max > 0 ? (cat.v2 / max * 100) : 50;
+        var winner1 = cat.v1 >= cat.v2;
+        return "<div style='margin-bottom:1rem'>" +
+          "<div style='display:flex;justify-content:space-between;margin-bottom:0.3rem;font-size:0.78rem'>" +
+            "<span style='color:" + (winner1 ? "var(--orange)" : "var(--muted)") + ";font-weight:" + (winner1 ? "700" : "400") + "'>" + cat.v1 + "</span>" +
+            "<span style='color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em'>" + cat.label + "</span>" +
+            "<span style='color:" + (!winner1 ? "var(--blue)" : "var(--muted)") + ";font-weight:" + (!winner1 ? "700" : "400") + "'>" + cat.v2 + "</span>" +
+          "</div>" +
+          "<div style='display:flex;gap:2px;height:6px'>" +
+            "<div style='flex:1;background:var(--surface2);border-radius:3px 0 0 3px;overflow:hidden'><div style='height:100%;width:" + pct1 + "%;background:var(--orange);border-radius:3px;margin-left:auto'></div></div>" +
+            "<div style='flex:1;background:var(--surface2);border-radius:0 3px 3px 0;overflow:hidden'><div style='height:100%;width:" + pct2 + "%;background:var(--blue);border-radius:3px'></div></div>" +
+          "</div>" +
+        "</div>";
+      }).join("");
+      showToast("Comparison ready!");
+    } catch(e) {
+      showToast("Comparison failed. Check player names.");
+    }
+  }
+
+  async function loadTimeline() {
+    if (!currentPlayer) return;
+    document.getElementById("timeline-loading").style.display = "block";
+    if (timelineChart) { timelineChart.destroy(); timelineChart = null; }
+    try {
+      var res = await fetch(API + "/timeline/" + encodeURIComponent(currentPlayer.name));
+      var data = await res.json();
+      document.getElementById("timeline-loading").style.display = "none";
+      document.getElementById("timeline-avg").textContent = "Season avg: " + data.season_avg + " PPG";
+      var labels = data.timeline.map(function(g) { return g.date; });
+      var pts = data.timeline.map(function(g) { return g.pts; });
+      var rolling = data.timeline.map(function(g) { return g.rolling_avg; });
+      var colors = data.timeline.map(function(g) { return g.wl === "W" ? "rgba(0,255,135,0.7)" : "rgba(255,107,71,0.7)"; });
+      timelineChart = new Chart(document.getElementById("timeline-chart").getContext("2d"), {
+        type: "bar",
+        data: {
+          labels: labels,
+          datasets: [
+            { label: "Points", data: pts, backgroundColor: colors, borderRadius: 3, order: 2 },
+            { label: "5-game rolling avg", data: rolling, type: "line", borderColor: "#fbbf24", backgroundColor: "transparent", tension: 0.4, pointRadius: 0, borderWidth: 2, order: 1 }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { labels: { color: "#6b7a99", font: { family: "DM Sans", size: 11 } } },
+            tooltip: {
+              callbacks: {
+                title: function(items) { return data.timeline[items[0].dataIndex].matchup; },
+                label: function(item) { return item.dataset.label + ": " + item.raw; }
+              }
+            }
+          },
+          scales: {
+            x: { ticks: { display: false }, grid: { display: false } },
+            y: { ticks: { color: "#6b7a99", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.03)" } }
+          }
+        }
+      });
+      showToast("Season timeline loaded!");
+    } catch(e) {
+      document.getElementById("timeline-loading").style.display = "none";
+      showToast("Failed to load timeline.");
+    }
+  }
+</script>
+</body>
+</html>
